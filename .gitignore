@@ -1,0 +1,7 @@
+*.iml
+build/
+.gradle/
+.idea/
+sample/build
+photodraweeview/build
+local.properties
