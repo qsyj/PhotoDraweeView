@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Matrix;
 import android.graphics.RectF;
 import android.os.Build;
+import android.os.Handler;
 import android.support.annotation.IntDef;
 import android.support.annotation.Nullable;
 import android.support.v4.view.GestureDetectorCompat;
@@ -376,8 +377,40 @@ public class Attacher implements IAttacher, View.OnTouchListener, OnScaleDragGes
                     && !mBlockParentIntercept) {
                 if (mOrientation == HORIZONTAL && (mScrollEdgeX == EDGE_BOTH || (mScrollEdgeX
                         == EDGE_LEFT && dx >= 1f) || (mScrollEdgeX == EDGE_RIGHT && dx <= -1f))) {
-                    parent.requestDisallowInterceptTouchEvent(false);
-//                    Log.e(getClass().getSimpleName(), "onDrag HORIZONTAL false" );
+                    if (parent instanceof ViewPager) {
+                        try {
+                            final ViewPager vp = (ViewPager) parent;
+                            float xDiff = Math.abs(dx);
+                            float yDiff = Math.abs(dy);
+                            final Field mTouchSlopField = ViewPager.class.getDeclaredField("mTouchSlop");
+                            mTouchSlopField.setAccessible(true);
+                            final int oldTouchSlop = (int) mTouchSlopField.get(vp);
+                            mTouchSlopField.set(vp, 0);
+                            new Handler().postDelayed(new Runnable() {
+                                @Override
+                                public void run() {
+                                    try {
+                                        mTouchSlopField.set(vp, oldTouchSlop);
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+                            }, 500);
+                            if (xDiff * 0.5f > yDiff) {
+                                setViewPagerField(vp, "mIsUnableToDrag", false);
+                                float lastX = x - dx;
+                                float lastY = y - dy;
+                                setViewPagerField(vp, "mLastMotionX", lastX);
+                                setViewPagerField(vp, "mInitialMotionX", lastX);
+                                setViewPagerField(vp, "mLastMotionY", lastY);
+                                setViewPagerField(vp, "mInitialMotionY", lastY);
+//                                Log.e(getClass().getSimpleName(), "onDrag HORIZONTAL ViewPager false" );
+                                parent.requestDisallowInterceptTouchEvent(false);
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
                 } else if (mOrientation == VERTICAL && (mScrollEdgeY == EDGE_BOTH || (mScrollEdgeY
                         == EDGE_TOP && dy >= 1f) || (mScrollEdgeY == EDGE_BOTTOM && dy <= -1f))) {
                     parent.requestDisallowInterceptTouchEvent(false);
@@ -388,7 +421,15 @@ public class Attacher implements IAttacher, View.OnTouchListener, OnScaleDragGes
             }
         }
     }
-
+    private void setViewPagerField(ViewPager vp, String name, Object value) {
+        try {
+            Field field = ViewPager.class.getDeclaredField(name);
+            field.setAccessible(true);
+            field.set(vp, value);
+        } catch (Exception ep) {
+            ep.printStackTrace();
+        }
+    }
     @Override public void onFling(float startX, float startY, float velocityX, float velocityY) {
         DraweeView<GenericDraweeHierarchy> draweeView = getDraweeView();
         if (draweeView == null) {
