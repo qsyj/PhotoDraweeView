@@ -360,7 +360,7 @@ public class Attacher implements IAttacher, View.OnTouchListener, OnScaleDragGes
         checkMinScale();
     }
 
-    @Override public void onDrag(float x,float y,float dx, float dy) {
+    @Override public void onDrag(MotionEvent ev,float x,float y,float dx, float dy) {
 
         DraweeView<GenericDraweeHierarchy> draweeView = getDraweeView();
 
@@ -397,6 +397,23 @@ public class Attacher implements IAttacher, View.OnTouchListener, OnScaleDragGes
                                 }
                             }, 500);
                             if (xDiff * 0.5f > yDiff) {
+/* ================================此处处理
+                                  当双手指放大 后拖到  再松开手指时
+                                 报错java.lang.IllegalArgumentException: pointerIndex out of range
+                                 与validatePointerIndex pointerIndex:-1, pointerCount:1；
+                                 因为当执行到ViewPager的onInterceptTouchEvent()方法时 mActivePointerId依然是0(ViewPager只在ACTION_DOWN时刷新mActivePointerId
+                                 当执行ACTION_MOVE不刷新mActivePointerId的值)
+                                 所以这里反射刷新mActivePointerId的值======*/
+                                int index = MotionEventCompat.getActionIndex(ev);
+                                int actionId= ev.getPointerId(index);
+//                                Log.e(getClass().getSimpleName(), "onDrag HORIZONTAL index:"+index+",actionId:"+actionId );
+                                setViewPagerField(vp, "mActivePointerId", actionId);
+/*=========================================================================================================================================================================*/
+/*==================================此处处理
+                                    当放大图片时，比如手指在右向左边滑动时（保证能滑动到边缘，可以切换ViewPager），当滑动到边界时，继续滑动瞬间，画面会跳动一下；
+                                    以前的代码当滑动到边界时，会让ViewPager走正常的事件分发流程（不再请求不拦截事件），但是ViewPager的onInterceptTouchEvent（）
+                                    在执行ACTION_MOVE时mLastMotion，mLastMotionY等参数还是ACTION_DOWN时的值，会造成xDiff很大！=======================================*/
+                                //因为执行到ViewPager的onInterceptTouchEvent()方法时mIsUnableToDrag是为true，就直接不拦截事件了，必须改为false
                                 setViewPagerField(vp, "mIsUnableToDrag", false);
                                 float lastX = x - dx;
                                 float lastY = y - dy;

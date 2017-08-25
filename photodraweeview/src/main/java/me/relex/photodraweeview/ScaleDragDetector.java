@@ -150,7 +150,7 @@ public class ScaleDragDetector implements ScaleGestureDetector.OnScaleGestureLis
                 }
 
                 if (mIsDragging) {
-                    mScaleDragGestureListener.onDrag(x,y,dx, dy);
+                    mScaleDragGestureListener.onDrag(ev,x,y,dx, dy);
                     mLastTouchX = x;
                     mLastTouchY = y;
 

@@ -1,5 +1,7 @@
 package me.relex.photodraweeview;
 
+import android.view.MotionEvent;
+
 /**
  * ****************************************************************************
  * Copyright 2011, 2012 Chris Banes.
@@ -19,7 +21,7 @@ package me.relex.photodraweeview;
  */
 
 public interface OnScaleDragGestureListener {
-    void onDrag(float x,float y,float dx, float dy);
+    void onDrag(MotionEvent ev,float x, float y, float dx, float dy);
 
     void onFling(float startX, float startY, float velocityX, float velocityY);
 
