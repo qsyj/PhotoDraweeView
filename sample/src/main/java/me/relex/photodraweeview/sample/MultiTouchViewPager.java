@@ -2,11 +2,12 @@ package me.relex.photodraweeview.sample;
 
 import android.content.Context;
 import android.support.annotation.NonNull;
-import android.support.v4.view.ViewPager;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 
-public class MultiTouchViewPager extends ViewPager {
+import me.relex.photodraweeview.PhotoDraweeViewPager;
+
+public class MultiTouchViewPager extends PhotoDraweeViewPager {
 
     public MultiTouchViewPager(Context context) {
         super(context);

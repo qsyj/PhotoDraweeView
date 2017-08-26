@@ -7,9 +7,9 @@ import android.net.Uri;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
+
 import com.facebook.drawee.backends.pipeline.Fresco;
 import com.facebook.drawee.controller.BaseControllerListener;
 import com.facebook.drawee.generic.GenericDraweeHierarchy;
@@ -211,5 +211,27 @@ public class PhotoDraweeView extends SimpleDraweeView implements IAttacher {
                 })
                 .build();
         setController(controller);
+    }
+    public void setLastValue(boolean isDragging,float x,float y,int activePointerId) {
+        if (mAttacher != null) {
+            ScaleDragDetector detector = mAttacher.getScaleDragDetector();
+            if (detector != null) {
+                detector.setLastValue(isDragging, x, y, activePointerId);
+            }
+        }
+    }
+
+    public boolean drag(int dx ,int dy) {
+        if (mAttacher==null)
+            return false;
+        return mAttacher.drag(dx,dy);
+    }
+    public boolean startOnTouch(MotionEvent event) {
+        if (mAttacher==null)
+            return false;
+        return mAttacher.onTouch(this,event);
+    }
+    public boolean isDragging() {
+        return mAttacher.isDragging();
     }
 }

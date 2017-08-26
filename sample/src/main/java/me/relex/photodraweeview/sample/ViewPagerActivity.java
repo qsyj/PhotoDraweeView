@@ -5,18 +5,21 @@ import android.content.Intent;
 import android.graphics.drawable.Animatable;
 import android.net.Uri;
 import android.os.Bundle;
-import android.support.v4.view.PagerAdapter;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.View;
 import android.view.ViewGroup;
+
 import com.facebook.drawee.backends.pipeline.Fresco;
 import com.facebook.drawee.backends.pipeline.PipelineDraweeControllerBuilder;
 import com.facebook.drawee.controller.BaseControllerListener;
 import com.facebook.imagepipeline.image.ImageInfo;
+
 import me.relex.circleindicator.CircleIndicator;
 import me.relex.photodraweeview.OnPhotoTapListener;
+import me.relex.photodraweeview.PhotoDraweePagerAdapter;
 import me.relex.photodraweeview.PhotoDraweeView;
+import me.relex.photodraweeview.PhotoDraweeViewPager;
 
 public class ViewPagerActivity extends AppCompatActivity {
 
@@ -41,10 +44,25 @@ public class ViewPagerActivity extends AppCompatActivity {
         CircleIndicator indicator = (CircleIndicator) findViewById(R.id.indicator);
         MultiTouchViewPager viewPager = (MultiTouchViewPager) findViewById(R.id.view_pager);
         viewPager.setAdapter(new DraweePagerAdapter());
-        indicator.setViewPager(viewPager);
+        viewPager.setOnPageChangeListener(new PhotoDraweeViewPager.OnPageChangeListener() {
+            @Override
+            public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
+//                Log.e(ViewPagerActivity.class.getSimpleName(), "onPageScrolled positionOffset:" + positionOffset + ",positionOffsetPixels:" + positionOffsetPixels);
+            }
+
+            @Override
+            public void onPageSelected(int position) {
+
+            }
+
+            @Override
+            public void onPageScrollStateChanged(int state) {
+
+            }
+        });
     }
 
-    public class DraweePagerAdapter extends PagerAdapter {
+    public class DraweePagerAdapter extends PhotoDraweePagerAdapter {
 
         private int[] mDrawables = new int[] {
                 R.drawable.viewpager_1, R.drawable.viewpager_2, R.drawable.viewpager_3

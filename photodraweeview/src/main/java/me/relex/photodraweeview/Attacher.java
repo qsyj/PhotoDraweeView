@@ -4,12 +4,10 @@ import android.content.Context;
 import android.graphics.Matrix;
 import android.graphics.RectF;
 import android.os.Build;
-import android.os.Handler;
 import android.support.annotation.IntDef;
 import android.support.annotation.Nullable;
 import android.support.v4.view.GestureDetectorCompat;
 import android.support.v4.view.MotionEventCompat;
-import android.support.v4.view.ViewPager;
 import android.support.v4.widget.ScrollerCompat;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
@@ -288,10 +286,10 @@ public class Attacher implements IAttacher, View.OnTouchListener, OnScaleDragGes
         if (width <= viewWidth) {
             deltaX = (viewWidth - width) / 2 - rect.left;
             mScrollEdgeX = EDGE_BOTH;
-        } else if (rect.left > 0) {
+        } else if (rect.left >= 0) {
             deltaX = -rect.left;
             mScrollEdgeX = EDGE_LEFT;
-        } else if (rect.right < viewWidth) {
+        } else if (rect.right <= viewWidth) {
             deltaX = viewWidth - rect.right;
             mScrollEdgeX = EDGE_RIGHT;
         } else {
@@ -372,56 +370,68 @@ public class Attacher implements IAttacher, View.OnTouchListener, OnScaleDragGes
             if (parent == null) {
                 return;
             }
+            boolean isScaling=mScaleDragDetector.isScaling();
             if (mAllowParentInterceptOnEdge
-                    && !mScaleDragDetector.isScaling()
+                    && !isScaling
                     && !mBlockParentIntercept) {
                 if (mOrientation == HORIZONTAL && (mScrollEdgeX == EDGE_BOTH || (mScrollEdgeX
                         == EDGE_LEFT && dx >= 1f) || (mScrollEdgeX == EDGE_RIGHT && dx <= -1f))) {
-                    if (parent instanceof ViewPager) {
+                    if (parent instanceof PhotoDraweeViewPager) {
                         try {
-                            final ViewPager vp = (ViewPager) parent;
+                            final PhotoDraweeViewPager vp = (PhotoDraweeViewPager) parent;
                             float xDiff = Math.abs(dx);
                             float yDiff = Math.abs(dy);
-                            final Field mTouchSlopField = ViewPager.class.getDeclaredField("mTouchSlop");
-                            mTouchSlopField.setAccessible(true);
-                            final int oldTouchSlop = (int) mTouchSlopField.get(vp);
-                            mTouchSlopField.set(vp, 0);
-                            new Handler().postDelayed(new Runnable() {
-                                @Override
-                                public void run() {
-                                    try {
-                                        mTouchSlopField.set(vp, oldTouchSlop);
-                                    } catch (Exception e) {
-                                        e.printStackTrace();
-                                    }
-                                }
-                            }, 500);
+
                             if (xDiff * 0.5f > yDiff) {
-/* ================================此处处理
-                                  当双手指放大 后拖到  再松开手指时
-                                 报错java.lang.IllegalArgumentException: pointerIndex out of range
-                                 与validatePointerIndex pointerIndex:-1, pointerCount:1；
-                                 因为当执行到ViewPager的onInterceptTouchEvent()方法时 mActivePointerId依然是0(ViewPager只在ACTION_DOWN时刷新mActivePointerId
-                                 当执行ACTION_MOVE不刷新mActivePointerId的值)
-                                 所以这里反射刷新mActivePointerId的值======*/
                                 int index = MotionEventCompat.getActionIndex(ev);
                                 int actionId= ev.getPointerId(index);
-//                                Log.e(getClass().getSimpleName(), "onDrag HORIZONTAL index:"+index+",actionId:"+actionId );
-                                setViewPagerField(vp, "mActivePointerId", actionId);
-/*=========================================================================================================================================================================*/
-/*==================================此处处理
-                                    当放大图片时，比如手指在右向左边滑动时（保证能滑动到边缘，可以切换ViewPager），当滑动到边界时，继续滑动瞬间，画面会跳动一下；
-                                    以前的代码当滑动到边界时，会让ViewPager走正常的事件分发流程（不再请求不拦截事件），但是ViewPager的onInterceptTouchEvent（）
-                                    在执行ACTION_MOVE时mLastMotion，mLastMotionY等参数还是ACTION_DOWN时的值，会造成xDiff很大！=======================================*/
-                                //因为执行到ViewPager的onInterceptTouchEvent()方法时mIsUnableToDrag是为true，就直接不拦截事件了，必须改为false
-                                setViewPagerField(vp, "mIsUnableToDrag", false);
                                 float lastX = x - dx;
                                 float lastY = y - dy;
-                                setViewPagerField(vp, "mLastMotionX", lastX);
-                                setViewPagerField(vp, "mInitialMotionX", lastX);
-                                setViewPagerField(vp, "mLastMotionY", lastY);
-                                setViewPagerField(vp, "mInitialMotionY", lastY);
-//                                Log.e(getClass().getSimpleName(), "onDrag HORIZONTAL ViewPager false" );
+//                                取消发射 自定PhotoDraweeViewPager不需要反射修改
+                                vp.startTouch(actionId,lastX,lastY);
+
+
+
+////                                           反射修改 ViewPager的值
+//                                final Field mTouchSlopField = PhotoDraweeViewPager.class.getDeclaredField("mTouchSlop");
+//                                mTouchSlopField.setAccessible(true);
+//                                final int oldTouchSlop = (int) mTouchSlopField.get(vp);
+//                                mTouchSlopField.set(vp, 0);
+//                                new Handler().postDelayed(new Runnable() {
+//                                    @Override
+//                                    public void run() {
+//                                        try {
+//                                            mTouchSlopField.set(vp, oldTouchSlop);
+//                                        } catch (Exception e) {
+//                                            e.printStackTrace();
+//                                        }
+//                                    }
+//                                }, 500);
+///* ================================此处处理
+//                                  当双手指放大 后拖到  再松开手指时
+//                                 报错java.lang.IllegalArgumentException: pointerIndex out of range
+//                                 与validatePointerIndex pointerIndex:-1, pointerCount:1；
+//                                 因为当执行到ViewPager的onInterceptTouchEvent()方法时 mActivePointerId依然是0(ViewPager只在ACTION_DOWN时刷新mActivePointerId
+//                                 当执行ACTION_MOVE不刷新mActivePointerId的值)
+//                                 所以这里反射刷新mActivePointerId的值======*/
+////                                Log.e(getClass().getSimpleName(), "onDrag HORIZONTAL index:"+index+",actionId:"+actionId );
+//                                setViewPagerField(vp, "mActivePointerId", actionId);
+///*=========================================================================================================================================================================*/
+///*==================================此处处理
+//                                    当放大图片时，比如手指在右向左边滑动时（保证能滑动到边缘，可以切换ViewPager），当滑动到边界时，继续滑动瞬间，画面会跳动一下；
+//                                    以前的代码当滑动到边界时，会让ViewPager走正常的事件分发流程（不再请求不拦截事件），但是ViewPager的onInterceptTouchEvent（）
+//                                    在执行ACTION_MOVE时mLastMotion，mLastMotionY等参数还是ACTION_DOWN时的值，会造成xDiff很大！=======================================*/
+//                                //因为执行到ViewPager的onInterceptTouchEvent()方法时mIsUnableToDrag是为true，就直接不拦截事件了，必须改为false
+//                                setViewPagerField(vp, "mIsUnableToDrag", false);
+//
+//                                setViewPagerField(vp, "mLastMotionX", lastX);
+//                                setViewPagerField(vp, "mInitialMotionX", lastX);
+//                                setViewPagerField(vp, "mLastMotionY", lastY);
+//                                setViewPagerField(vp, "mInitialMotionY", lastY);
+////                                Log.e(getClass().getSimpleName(), "onDrag HORIZONTAL ViewPager false" );
+
+
+
                                 parent.requestDisallowInterceptTouchEvent(false);
                             }
                         } catch (Exception e) {
@@ -438,9 +448,9 @@ public class Attacher implements IAttacher, View.OnTouchListener, OnScaleDragGes
             }
         }
     }
-    private void setViewPagerField(ViewPager vp, String name, Object value) {
+    private void setViewPagerField(PhotoDraweeViewPager vp, String name, Object value) {
         try {
-            Field field = ViewPager.class.getDeclaredField(name);
+            Field field = PhotoDraweeViewPager.class.getDeclaredField(name);
             field.setAccessible(true);
             field.set(vp, value);
         } catch (Exception ep) {
@@ -617,5 +627,36 @@ public class Attacher implements IAttacher, View.OnTouchListener, OnScaleDragGes
 
     protected void onDetachedFromWindow() {
         cancelFling();
+    }
+
+    public ScaleDragDetector getScaleDragDetector() {
+        return mScaleDragDetector;
+    }
+    public boolean isDragging() {
+        return mScaleDragDetector.isDragging();
+    }
+
+    public boolean drag(int dx ,int dy) {
+        DraweeView<GenericDraweeHierarchy> draweeView = getDraweeView();
+        ViewParent parent = draweeView.getParent();
+        boolean isDraging = true;
+        if (parent != null) {
+            if (mAllowParentInterceptOnEdge
+                    && !mScaleDragDetector.isScaling()
+                    && !mBlockParentIntercept) {
+                if (mOrientation == HORIZONTAL && (mScrollEdgeX == EDGE_BOTH || (mScrollEdgeX
+                        == EDGE_LEFT && dx >= 1f) || (mScrollEdgeX == EDGE_RIGHT && dx <= -1f))) {
+                    isDraging = false;
+                }
+            }
+        }
+        /*if (isDraging) {
+            if (draweeView != null && !mScaleDragDetector.isScaling()) {
+                mMatrix.postTranslate(dx, dy);
+                checkMatrixAndInvalidate();
+            }
+        }*/
+        return isDraging;
+
     }
 }

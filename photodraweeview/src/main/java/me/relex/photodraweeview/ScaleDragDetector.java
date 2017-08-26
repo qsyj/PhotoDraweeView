@@ -194,4 +194,11 @@ public class ScaleDragDetector implements ScaleGestureDetector.OnScaleGestureLis
             }
         }
     }
+
+    public void setLastValue(boolean isDragging,float x,float y,int activePointerId) {
+        this.mIsDragging = isDragging;
+        mLastTouchX = x;
+        mLastTouchY = y;
+        mActivePointerId = activePointerId;
+    }
 }
