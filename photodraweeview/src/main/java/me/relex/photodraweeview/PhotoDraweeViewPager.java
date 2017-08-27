@@ -1840,7 +1840,6 @@ public class PhotoDraweeViewPager extends ViewGroup {
      */
     @CallSuper
     protected void onPageScrolled(int position, float offset, int offsetPixels) {
-        mOldPageOffset = offset;
         // Offset any decor views if needed - keep them on-screen at all times.
         if (mDecorChildCount > 0) {
             final int scrollX = getScrollX();
@@ -1944,6 +1943,16 @@ public class PhotoDraweeViewPager extends ViewGroup {
     }
 
     public void startTouch(int actionId,float lastX, float lastY) {
+        PhotoDraweePagerAdapter adapter = getAdapter();
+        if (adapter == null) {
+            return;
+        }
+
+        /*如果只有一个子View时,ViewPager不需要去滑动,让mIsUnableToDrag为true,则不会拦截事件*/
+        if (adapter.getCount() <2) {
+            mIsUnableToDrag = true;
+            return;
+        }
         mIsChildViewMoved = false;
         mIsUnableToDrag = false;
         final int oldTouchSlop = mTouchSlop;
@@ -2417,8 +2426,14 @@ public class PhotoDraweeViewPager extends ViewGroup {
         return needsInvalidate;
     }
 
-    private float mOldPageOffset = 0f;
-
+    private int mOldscrollx = 0;
+    private final static int TYPE_DRAG_EDAGE1 = 1;
+    private final static int TYPE_DRAG_EDAGE2 = 2;
+    private final static int TYPE_DRAG_EDAGE3 = 3;
+    private final static int TYPE_DRAG_EDAGE4 = 4;
+    private final static int TYPE_DRAG_EDAGE5 = 5;
+    private final static int TYPE_DRAG_EDAGE6 = 6;
+    private final static int TYPE_DRAG_EDAGE_NONE = -1;
     /**
      * 在页面边缘切换时,需要判断子View是否缩放,是否需要拖动处理,如果需要则要使mIsChildViewMoved为true,PhotoDraweeViewPager暂时不需要事件处理
      * 比如第二页面向右滑动时pageOffset从1-->0变化,scrollx(屏幕1080*1920)从1080-->0变化  向左滑动pageOffset从0-->1变化,scrollx(屏幕1080*1920)从1080-->2160变化
@@ -2429,6 +2444,8 @@ public class PhotoDraweeViewPager extends ViewGroup {
      * @return
      */
     private boolean checkChildDrag(int xpos,int scrollx,int scrolly) {
+
+
         final ItemInfo ii = infoForCurrentScrollPosition();
         final int currentPage = ii.position;
         float pageOffset = 0f;
@@ -2452,18 +2469,21 @@ public class PhotoDraweeViewPager extends ViewGroup {
                         pageOffset = pageOffset >= 0 ? pageOffset : 1 + pageOffset;
                         pageOffset = pageOffset > 1 ? pageOffset-1 : pageOffset;
 
-                        Log.e("checkChildDrag()", "mOldPageOffset:" + mOldPageOffset + ",pageOffset:" + pageOffset +",currentPage" + currentPage + ",scrollx:" + scrollx + ",width:" + width);
+//                        Log.e("checkChildDrag()", "mOldPageOffset:" + mOldPageOffset + ",pageOffset:" + pageOffset +",currentPage" + currentPage + ",scrollx:" + scrollx + ",width:" + width);
 /*===================================前两个条件是因为第一页和最后一页在边缘滑动时pageOffset始终为0=======================================================*/
-                        if ((currentPage==0&&pageOffset==0f)||
+                        int edgeType = checkPageEdage(scrollx);
+                            if (/*(currentPage==0&&pageOffset==0f)||
                                 ((currentPage==adapter.getCount()-1)&&pageOffset==0)||
                                 (mOldPageOffset > 0.95f && pageOffset < 0.05f) ||
-                                (mOldPageOffset < 0.05f && pageOffset > 0.095f)) {
+                                (mOldPageOffset < 0.05f && pageOffset > 0.095f)*/
+                                    edgeType>0) {
                             int childDx ;
                             int oldScrollx = scrollx;
                             int newScrollx = mCurItem * width;
                             childDx = newScrollx - oldScrollx;
 /*============第一个条件是第一页边缘向右滑动或者最后一页在边缘滑动向左滑动不成立(不加这个条件 当第一页边缘向右滑动时 随手势向右的波浪效果会出问题,因为事件不分发给ViewPager了)=======================================================*/
-                            if (!(childDx==0&&(currentPage==0||(currentPage==adapter.getCount()-1)))&&
+//                            if (!(childDx==0&&(currentPage==0||(currentPage==adapter.getCount()-1)))&&
+                            if (!(childDx==0&&(edgeType==TYPE_DRAG_EDAGE4||edgeType==TYPE_DRAG_EDAGE6))&&
                                     photoDraweeView.drag(childDx, 0)) {
                                 isNeed = true;
                                 scrollx = newScrollx;
@@ -2476,12 +2496,59 @@ public class PhotoDraweeViewPager extends ViewGroup {
         }
         scrollTo(scrollx, scrolly);
         pageScrolled(scrollx);
+        mOldscrollx = scrollx;
         if (isNeed) {
             mIsChildViewMoved = true;
             resetTouch();
         }
         return false;
 
+    }
+
+    /**
+     * 判断滑动时是否经历了一次边缘滑动
+     * @param scrollx
+     * @return TYPE_DRAG_EDAGE_NONE-->没有;  TYPE_DRAG_EDAGE1-->向左滑动经历; TYPE_DRAG_EDAGE2-->向右滑动经历;
+     * TYPE_DRAG_EDAGE3-->第1页时右边缘向右滑动经历;  TYPE_DRAG_EDAGE4-->第1页时左边缘向右滑动经历;
+     * TYPE_DRAG_EDAGE5-->最后一页时左边缘向左滑动经历;  TYPE_DRAG_EDAGE6-->最后一页时右边缘向左滑动经历;
+     */
+    private int checkPageEdage(int scrollx) {
+        Log.e("checkChildDrag()", "scrollx:" + scrollx+",mOldscrollx:"+mOldscrollx+",mCurItem:"+mCurItem);
+        final int width = getClientWidth();
+        int oldscrollx = 0;
+        if (scrollx > mOldscrollx) {//向左滑动
+            scrollx = scrollx % width;
+            oldscrollx = mOldscrollx % width;
+            if (oldscrollx > scrollx) {
+                return TYPE_DRAG_EDAGE1;
+            }
+        }
+        if (scrollx < mOldscrollx) {//向右滑动
+            scrollx = scrollx % width;
+            oldscrollx = mOldscrollx % width;
+            if (oldscrollx < scrollx) {
+                return TYPE_DRAG_EDAGE2;
+            }
+        }
+
+        if (mCurItem==0&&scrollx == 0) {
+            if (oldscrollx > 0) {
+                return TYPE_DRAG_EDAGE3;
+            } else {
+                return TYPE_DRAG_EDAGE4;
+            }
+
+        }
+        PhotoDraweePagerAdapter adapter = getAdapter();
+        int count = adapter.getCount();
+        if (mCurItem == count - 1 && scrollx == count * width) {
+            if (oldscrollx < count * width) {
+                return TYPE_DRAG_EDAGE5;
+            } else {
+                return TYPE_DRAG_EDAGE6;
+            }
+        }
+        return TYPE_DRAG_EDAGE_NONE;
     }
     /**
      * @return Info about the page at the current scroll position.

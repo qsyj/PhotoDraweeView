@@ -43,6 +43,7 @@ public class ViewPagerActivity extends AppCompatActivity {
 
         CircleIndicator indicator = (CircleIndicator) findViewById(R.id.indicator);
         MultiTouchViewPager viewPager = (MultiTouchViewPager) findViewById(R.id.view_pager);
+        viewPager.setOffscreenPageLimit(3);
         viewPager.setAdapter(new DraweePagerAdapter());
         viewPager.setOnPageChangeListener(new PhotoDraweeViewPager.OnPageChangeListener() {
             @Override
@@ -65,9 +66,11 @@ public class ViewPagerActivity extends AppCompatActivity {
     public class DraweePagerAdapter extends PhotoDraweePagerAdapter {
 
         private int[] mDrawables = new int[] {
-                R.drawable.viewpager_1, R.drawable.viewpager_2, R.drawable.viewpager_3
+                R.drawable.viewpager_1, R.drawable.viewpager_2, R.drawable.viewpager_3,R.drawable.viewpager_1, R.drawable.viewpager_2, R.drawable.viewpager_3,R.drawable.viewpager_1, R.drawable.viewpager_2, R.drawable.viewpager_3
         };
-
+        /*private int[] mDrawables = new int[] {
+                R.drawable.viewpager_1
+        };*/
         @Override public int getCount() {
             return mDrawables.length;
         }
