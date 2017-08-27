@@ -2450,8 +2450,9 @@ public class PhotoDraweeViewPager extends ViewGroup {
                         pageOffset = (((float) xpos / width) - ii.offset)
                                 / (ii.widthFactor + marginOffset);
                         pageOffset = pageOffset >= 0 ? pageOffset : 1 + pageOffset;
+                        pageOffset = pageOffset > 1 ? pageOffset-1 : pageOffset;
 
-//                        Log.e("checkChildDrag()", "mOldPageOffset:" + mOldPageOffset + ",pageOffset:" + pageOffset +",offsetPixels" + offsetPixels + ",scrollx:" + scrollx + ",width:" + width);
+                        Log.e("checkChildDrag()", "mOldPageOffset:" + mOldPageOffset + ",pageOffset:" + pageOffset +",currentPage" + currentPage + ",scrollx:" + scrollx + ",width:" + width);
 /*===================================前两个条件是因为第一页和最后一页在边缘滑动时pageOffset始终为0=======================================================*/
                         if ((currentPage==0&&pageOffset==0f)||
                                 ((currentPage==adapter.getCount()-1)&&pageOffset==0)||
@@ -2459,7 +2460,7 @@ public class PhotoDraweeViewPager extends ViewGroup {
                                 (mOldPageOffset < 0.05f && pageOffset > 0.095f)) {
                             int childDx ;
                             int oldScrollx = scrollx;
-                            int newScrollx = currentPage * width;
+                            int newScrollx = mCurItem * width;
                             childDx = newScrollx - oldScrollx;
 /*============第一个条件是第一页边缘向右滑动或者最后一页在边缘滑动向左滑动不成立(不加这个条件 当第一页边缘向右滑动时 随手势向右的波浪效果会出问题,因为事件不分发给ViewPager了)=======================================================*/
                             if (!(childDx==0&&(currentPage==0||(currentPage==adapter.getCount()-1)))&&
