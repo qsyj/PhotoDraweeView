@@ -2069,6 +2069,7 @@ public class PhotoDraweeViewPager extends ViewGroup {
             mIsChildViewMoved = false;
         }
         boolean childTouch = false;
+
         if (mIsChildViewMoved) {
             PhotoDraweePagerAdapter adapter = getAdapter();
             if (adapter != null) {
@@ -2080,6 +2081,7 @@ public class PhotoDraweeViewPager extends ViewGroup {
 //                        photoDraweeView.setLastValue(true,MotionEventCompat.getX(ev, activePointerIndex),
 //                                MotionEventCompat.getY(ev, activePointerIndex),mActivePointerId);
 //                    }
+                    //需要更新ScaleDragDetector中mLastTouchY值 不然此时可能会在垂直方向移动
                     photoDraweeView.startOnTouch(ev);
                     childTouch = true;
 
@@ -2105,7 +2107,7 @@ public class PhotoDraweeViewPager extends ViewGroup {
 
         // Always take care of the touch gesture being complete.
         if (action == MotionEvent.ACTION_CANCEL || action == MotionEvent.ACTION_UP) {
-            // Release the drag.
+            // Release the isNeedDrag.
             if (DEBUG) Log.v(TAG, "Intercept done!");
             resetTouch();
             return false;
@@ -2158,7 +2160,7 @@ public class PhotoDraweeViewPager extends ViewGroup {
                     return false;
                 }
                 if (xDiff > mTouchSlop && xDiff * 0.5f > yDiff) {
-                    if (DEBUG) Log.v(TAG, "Starting drag!");
+                    if (DEBUG) Log.v(TAG, "Starting isNeedDrag!");
                     mIsBeingDragged = true;
                     requestParentDisallowInterceptTouchEvent(true);
                     setScrollState(SCROLL_STATE_DRAGGING);
@@ -2168,10 +2170,10 @@ public class PhotoDraweeViewPager extends ViewGroup {
                     setScrollingCacheEnabled(true);
                 } else if (yDiff > mTouchSlop) {
                     // The finger has moved enough in the vertical
-                    // direction to be counted as a drag...  abort
-                    // any attempt to drag horizontally, to work correctly
+                    // direction to be counted as a isNeedDrag...  abort
+                    // any attempt to isNeedDrag horizontally, to work correctly
                     // with children that have scrolling containers.
-                    if (DEBUG) Log.v(TAG, "Starting unable to drag!");
+                    if (DEBUG) Log.v(TAG, "Starting unable to isNeedDrag!");
                     mIsUnableToDrag = true;
                 }
                 if (mIsBeingDragged) {
@@ -2229,7 +2231,7 @@ public class PhotoDraweeViewPager extends ViewGroup {
 
         /*
          * The only time we want to intercept motion events is if we are in the
-         * drag mode.
+         * isNeedDrag mode.
          */
         return mIsBeingDragged;
     }
@@ -2237,7 +2239,7 @@ public class PhotoDraweeViewPager extends ViewGroup {
     @Override
     public boolean onTouchEvent(MotionEvent ev) {
         if (mFakeDragging) {
-            // A fake drag is in progress already, ignore this real one
+            // A fake isNeedDrag is in progress already, ignore this real one
             // but still eat the touch events.
             // (It is likely that the user is multi-touching the screen.)
             return true;
@@ -2291,7 +2293,7 @@ public class PhotoDraweeViewPager extends ViewGroup {
                         Log.v(TAG, "Moved x to " + x + "," + y + " diff=" + xDiff + "," + yDiff);
                     }
                     if (xDiff > mTouchSlop && xDiff > yDiff) {
-                        if (DEBUG) Log.v(TAG, "Starting drag!");
+                        if (DEBUG) Log.v(TAG, "Starting isNeedDrag!");
                         mIsBeingDragged = true;
                         requestParentDisallowInterceptTouchEvent(true);
                         mLastMotionX = x - mInitialMotionX > 0 ? mInitialMotionX + mTouchSlop :
@@ -2469,22 +2471,26 @@ public class PhotoDraweeViewPager extends ViewGroup {
                         pageOffset = pageOffset >= 0 ? pageOffset : 1 + pageOffset;
                         pageOffset = pageOffset > 1 ? pageOffset-1 : pageOffset;
 
-//                        Log.e("checkChildDrag()", "mOldPageOffset:" + mOldPageOffset + ",pageOffset:" + pageOffset +",currentPage" + currentPage + ",scrollx:" + scrollx + ",width:" + width);
 /*===================================前两个条件是因为第一页和最后一页在边缘滑动时pageOffset始终为0=======================================================*/
                         int edgeType = checkPageEdage(scrollx);
+                        Log.e("checkChildDrag()","edgeType:"+edgeType+",mOldscrollx:" + mOldscrollx +",mCurItem" + mCurItem + ",scrollx:" + scrollx + ",width:" + width);
                             if (/*(currentPage==0&&pageOffset==0f)||
                                 ((currentPage==adapter.getCount()-1)&&pageOffset==0)||
                                 (mOldPageOffset > 0.95f && pageOffset < 0.05f) ||
                                 (mOldPageOffset < 0.05f && pageOffset > 0.095f)*/
                                     edgeType>0) {
-                            int childDx ;
-                            int oldScrollx = scrollx;
-                            int newScrollx = mCurItem * width;
-                            childDx = newScrollx - oldScrollx;
+//                             Log.e("checkChildDrag()", "scrollx:" + scrollx );
+
+                                int childDx ;
+                                int oldScrollx = scrollx;
+                                int newScrollx = mCurItem * width;
+                                childDx = newScrollx - oldScrollx;
+                                Log.e("checkChildDrag()", "childDx:" + childDx );
+
 /*============第一个条件是第一页边缘向右滑动或者最后一页在边缘滑动向左滑动不成立(不加这个条件 当第一页边缘向右滑动时 随手势向右的波浪效果会出问题,因为事件不分发给ViewPager了)=======================================================*/
 //                            if (!(childDx==0&&(currentPage==0||(currentPage==adapter.getCount()-1)))&&
                             if (!(childDx==0&&(edgeType==TYPE_DRAG_EDAGE4||edgeType==TYPE_DRAG_EDAGE6))&&
-                                    photoDraweeView.drag(childDx, 0)) {
+                                    photoDraweeView.isNeedDrag(childDx, 0)) {
                                 isNeed = true;
                                 scrollx = newScrollx;
                             }
@@ -2513,9 +2519,27 @@ public class PhotoDraweeViewPager extends ViewGroup {
      * TYPE_DRAG_EDAGE5-->最后一页时左边缘向左滑动经历;  TYPE_DRAG_EDAGE6-->最后一页时右边缘向左滑动经历;
      */
     private int checkPageEdage(int scrollx) {
-        Log.e("checkChildDrag()", "scrollx:" + scrollx+",mOldscrollx:"+mOldscrollx+",mCurItem:"+mCurItem);
+//        Log.e("checkChildDrag()", "scrollx:" + scrollx+",mOldscrollx:"+mOldscrollx+",mCurItem:"+mCurItem);
         final int width = getClientWidth();
         int oldscrollx = 0;
+        if (mCurItem==0) {
+            if (mOldscrollx > 0) {
+                return TYPE_DRAG_EDAGE3;
+            } else {
+                return TYPE_DRAG_EDAGE4;
+            }
+
+        }
+        PhotoDraweePagerAdapter adapter = getAdapter();
+        int count = adapter.getCount()-1;
+        if (mCurItem == count) {
+            if (mOldscrollx < count * width) {
+                return TYPE_DRAG_EDAGE5;
+            } else {
+                return TYPE_DRAG_EDAGE6;
+            }
+        }
+
         if (scrollx > mOldscrollx) {//向左滑动
             scrollx = scrollx % width;
             oldscrollx = mOldscrollx % width;
@@ -2531,23 +2555,7 @@ public class PhotoDraweeViewPager extends ViewGroup {
             }
         }
 
-        if (mCurItem==0&&scrollx == 0) {
-            if (oldscrollx > 0) {
-                return TYPE_DRAG_EDAGE3;
-            } else {
-                return TYPE_DRAG_EDAGE4;
-            }
 
-        }
-        PhotoDraweePagerAdapter adapter = getAdapter();
-        int count = adapter.getCount();
-        if (mCurItem == count - 1 && scrollx == count * width) {
-            if (oldscrollx < count * width) {
-                return TYPE_DRAG_EDAGE5;
-            } else {
-                return TYPE_DRAG_EDAGE6;
-            }
-        }
         return TYPE_DRAG_EDAGE_NONE;
     }
     /**
@@ -2703,18 +2711,18 @@ public class PhotoDraweeViewPager extends ViewGroup {
     }
 
     /**
-     * Start a fake drag of the pager.
+     * Start a fake isNeedDrag of the pager.
      *
-     * <p>A fake drag can be useful if you want to synchronize the motion of the ViewPager
+     * <p>A fake isNeedDrag can be useful if you want to synchronize the motion of the ViewPager
      * with the touch scrolling of another view, while still letting the ViewPager
      * control the snapping motion and fling behavior. (e.g. parallax-scrolling tabs.)
-     * Call {@link #fakeDragBy(float)} to simulate the actual drag motion. Call
-     * {@link #endFakeDrag()} to complete the fake drag and fling as necessary.
+     * Call {@link #fakeDragBy(float)} to simulate the actual isNeedDrag motion. Call
+     * {@link #endFakeDrag()} to complete the fake isNeedDrag and fling as necessary.
      *
-     * <p>During a fake drag the ViewPager will ignore all touch events. If a real drag
+     * <p>During a fake isNeedDrag the ViewPager will ignore all touch events. If a real isNeedDrag
      * is already in progress, this method will return false.
      *
-     * @return true if the fake drag began successfully, false if it could not be started.
+     * @return true if the fake isNeedDrag began successfully, false if it could not be started.
      *
      * @see #fakeDragBy(float)
      * @see #endFakeDrag()
@@ -2740,14 +2748,14 @@ public class PhotoDraweeViewPager extends ViewGroup {
     }
 
     /**
-     * End a fake drag of the pager.
+     * End a fake isNeedDrag of the pager.
      *
      * @see #beginFakeDrag()
      * @see #fakeDragBy(float)
      */
     public void endFakeDrag() {
         if (!mFakeDragging) {
-            throw new IllegalStateException("No fake drag in progress. Call beginFakeDrag first.");
+            throw new IllegalStateException("No fake isNeedDrag in progress. Call beginFakeDrag first.");
         }
 
         if (mAdapter != null) {
@@ -2772,15 +2780,15 @@ public class PhotoDraweeViewPager extends ViewGroup {
     }
 
     /**
-     * Fake drag by an offset in pixels. You must have called {@link #beginFakeDrag()} first.
+     * Fake isNeedDrag by an offset in pixels. You must have called {@link #beginFakeDrag()} first.
      *
-     * @param xOffset Offset in pixels to drag by.
+     * @param xOffset Offset in pixels to isNeedDrag by.
      * @see #beginFakeDrag()
      * @see #endFakeDrag()
      */
     public void fakeDragBy(float xOffset) {
         if (!mFakeDragging) {
-            throw new IllegalStateException("No fake drag in progress. Call beginFakeDrag first.");
+            throw new IllegalStateException("No fake isNeedDrag in progress. Call beginFakeDrag first.");
         }
 
         if (mAdapter == null) {
@@ -2824,9 +2832,9 @@ public class PhotoDraweeViewPager extends ViewGroup {
     }
 
     /**
-     * Returns true if a fake drag is in progress.
+     * Returns true if a fake isNeedDrag is in progress.
      *
-     * @return true if currently in a fake drag, false otherwise.
+     * @return true if currently in a fake isNeedDrag, false otherwise.
      *
      * @see #beginFakeDrag()
      * @see #fakeDragBy(float)

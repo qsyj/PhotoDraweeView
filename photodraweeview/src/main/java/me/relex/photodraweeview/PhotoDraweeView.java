@@ -212,23 +212,16 @@ public class PhotoDraweeView extends SimpleDraweeView implements IAttacher {
                 .build();
         setController(controller);
     }
-    public void setLastValue(boolean isDragging,float x,float y,int activePointerId) {
-        if (mAttacher != null) {
-            ScaleDragDetector detector = mAttacher.getScaleDragDetector();
-            if (detector != null) {
-                detector.setLastValue(isDragging, x, y, activePointerId);
-            }
-        }
-    }
 
-    public boolean drag(int dx ,int dy) {
+    public boolean isNeedDrag(int dx , int dy) {
         if (mAttacher==null)
             return false;
-        return mAttacher.drag(dx,dy);
+        return mAttacher.isNeedDrag(dx,dy);
     }
     public boolean startOnTouch(MotionEvent event) {
         if (mAttacher==null)
             return false;
+        mAttacher.refreshLastTouchY();
         return mAttacher.onTouch(this,event);
     }
     public boolean isDragging() {

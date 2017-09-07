@@ -629,14 +629,22 @@ public class Attacher implements IAttacher, View.OnTouchListener, OnScaleDragGes
         cancelFling();
     }
 
+
     public ScaleDragDetector getScaleDragDetector() {
         return mScaleDragDetector;
     }
+
+    public void refreshLastTouchY() {
+        if (mScaleDragDetector != null) {
+            mScaleDragDetector.refreshLastTouchY();
+        }
+    }
+
     public boolean isDragging() {
         return mScaleDragDetector.isDragging();
     }
 
-    public boolean drag(int dx ,int dy) {
+    public boolean isNeedDrag(int dx , int dy) {
         DraweeView<GenericDraweeHierarchy> draweeView = getDraweeView();
         ViewParent parent = draweeView.getParent();
         boolean isDraging = true;
@@ -657,6 +665,5 @@ public class Attacher implements IAttacher, View.OnTouchListener, OnScaleDragGes
             }
         }*/
         return isDraging;
-
     }
 }

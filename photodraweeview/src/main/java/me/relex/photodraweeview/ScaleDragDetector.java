@@ -37,6 +37,10 @@ public class ScaleDragDetector implements ScaleGestureDetector.OnScaleGestureLis
     private boolean mIsDragging;
     float mLastTouchX;
     float mLastTouchY;
+    /**
+     * 是否刷新LastTouchY值 防止竖直滑动
+     */
+    boolean isRefreshLastTouchY;
     private int mActivePointerId = INVALID_POINTER_ID;
     private int mActivePointerIndex = 0;
 
@@ -143,8 +147,15 @@ public class ScaleDragDetector implements ScaleGestureDetector.OnScaleGestureLis
             case MotionEvent.ACTION_MOVE: {
                 final float x = getActiveX(ev);
                 final float y = getActiveY(ev);
-                final float dx = x - mLastTouchX, dy = y - mLastTouchY;
-
+                final float dx = x - mLastTouchX;
+                final float dy;
+                if (isRefreshLastTouchY) {
+                    dy = 0;
+                    isRefreshLastTouchY = false;
+                } else {
+                    dy = y - mLastTouchY;
+                }
+//                Log.e(ScaleDragDetector.class.getSimpleName(), "dx:" + dx+",mLastTouchX:"+mLastTouchX+",x:"+x);
                 if (!mIsDragging) {
                     mIsDragging = Math.sqrt((dx * dx) + (dy * dy)) >= mTouchSlop;
                 }
@@ -194,11 +205,7 @@ public class ScaleDragDetector implements ScaleGestureDetector.OnScaleGestureLis
             }
         }
     }
-
-    public void setLastValue(boolean isDragging,float x,float y,int activePointerId) {
-        this.mIsDragging = isDragging;
-        mLastTouchX = x;
-        mLastTouchY = y;
-        mActivePointerId = activePointerId;
+    public void refreshLastTouchY(){
+        isRefreshLastTouchY = true;
     }
 }
