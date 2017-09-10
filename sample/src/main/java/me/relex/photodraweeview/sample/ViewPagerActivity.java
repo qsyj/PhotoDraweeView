@@ -10,13 +10,10 @@ import android.support.v7.widget.Toolbar;
 import android.view.View;
 import android.view.ViewGroup;
 
-import com.facebook.drawee.backends.pipeline.Fresco;
-import com.facebook.drawee.backends.pipeline.PipelineDraweeControllerBuilder;
-import com.facebook.drawee.controller.BaseControllerListener;
+import com.facebook.drawee.drawable.ScalingUtils;
 import com.facebook.imagepipeline.image.ImageInfo;
 
 import me.relex.circleindicator.CircleIndicator;
-import me.relex.photodraweeview.OnPhotoTapListener;
 import me.relex.photodraweeview.PhotoDraweePagerAdapter;
 import me.relex.photodraweeview.PhotoDraweeView;
 import me.relex.photodraweeview.PhotoDraweeViewPager;
@@ -84,32 +81,30 @@ public class ViewPagerActivity extends AppCompatActivity {
         }
 
         @Override public Object instantiateItem(ViewGroup viewGroup, int position) {
+            String res = "res:///" + mDrawables[position];
             final PhotoDraweeView photoDraweeView = new PhotoDraweeView(viewGroup.getContext());
-            PipelineDraweeControllerBuilder controller = Fresco.newDraweeControllerBuilder();
-            controller.setUri(Uri.parse("res:///" + mDrawables[position]));
-            controller.setOldController(photoDraweeView.getController());
-            controller.setControllerListener(new BaseControllerListener<ImageInfo>() {
-                @Override
-                public void onFinalImageSet(String id, ImageInfo imageInfo, Animatable animatable) {
-                    super.onFinalImageSet(id, imageInfo, animatable);
-                    if (imageInfo == null) {
-                        return;
-                    }
-                    photoDraweeView.update(imageInfo.getWidth(), imageInfo.getHeight());
-                }
-            });
-            photoDraweeView.setController(controller.build());
-            photoDraweeView.setOnPhotoTapListener(new OnPhotoTapListener() {
-                @Override
-                public void onPhotoTap(View view, float x, float y) {
-                    if (mToolbar.getVisibility() == View.VISIBLE) {
-                        mToolbar.setVisibility(View.INVISIBLE);
-                    } else {
-                        mToolbar.setVisibility(View.VISIBLE);
-                    }
-                }
-            });
+            photoDraweeView.setPhotoUri("http://ll.ll.vom/dkk.jpg", R.drawable.ic_error,
+                    ScalingUtils.ScaleType.CENTER, -1, true, new PhotoDraweeView.DownLoadListener() {
+                        @Override
+                        public void onFinalImageSet(PhotoDraweeView view, Uri uri, String id, ImageInfo imageInfo, Animatable animatable) {
 
+                        }
+
+                        @Override
+                        public void onIntermediateImageSet(PhotoDraweeView view, Uri uri, String id, ImageInfo imageInfo) {
+
+                        }
+
+                        @Override
+                        public void onFailure(PhotoDraweeView view, String id, Throwable throwable) {
+
+                        }
+
+                        @Override
+                        public void onIntermediateImageFailed(PhotoDraweeView view, String id, Throwable throwable) {
+
+                        }
+                    });
             try {
                 viewGroup.addView(photoDraweeView, ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT);

@@ -12,16 +12,21 @@ import android.view.MotionEvent;
 
 import com.facebook.drawee.backends.pipeline.Fresco;
 import com.facebook.drawee.controller.BaseControllerListener;
+import com.facebook.drawee.drawable.ScalingUtils;
 import com.facebook.drawee.generic.GenericDraweeHierarchy;
 import com.facebook.drawee.interfaces.DraweeController;
 import com.facebook.drawee.view.SimpleDraweeView;
 import com.facebook.imagepipeline.image.ImageInfo;
+
+import static com.facebook.drawee.drawable.ScalingUtils.ScaleType.CENTER;
 
 public class PhotoDraweeView extends SimpleDraweeView implements IAttacher {
 
     private Attacher mAttacher;
 
     private boolean mEnableDraweeMatrix = true;
+    private DownLoadListener mDownLoadListener;
+    private Config mConfig;
 
     public PhotoDraweeView(Context context, GenericDraweeHierarchy hierarchy) {
         super(context, hierarchy);
@@ -44,11 +49,13 @@ public class PhotoDraweeView extends SimpleDraweeView implements IAttacher {
     }
 
     protected void init() {
+        if (mConfig == null) {
+            mConfig = new Config();
+        }
         if (mAttacher == null || mAttacher.getDraweeView() == null) {
             mAttacher = new Attacher(this);
         }
     }
-
     public Attacher getAttacher() {
         return mAttacher;
     }
@@ -57,6 +64,11 @@ public class PhotoDraweeView extends SimpleDraweeView implements IAttacher {
         boolean b = super.onTouchEvent(event);
 //        Log.e(getClass().getSimpleName(), "onTouchEvent b:" + b);
         return b;
+    }
+
+    @Override
+    public void setController(DraweeController draweeController) {
+        super.setController(draweeController);
     }
 
     @Override protected void onDraw(@NonNull Canvas canvas) {
@@ -170,28 +182,65 @@ public class PhotoDraweeView extends SimpleDraweeView implements IAttacher {
         mEnableDraweeMatrix = enableDraweeMatrix;
     }
 
-    public void setPhotoUri(Uri uri) {
-        setPhotoUri(uri, null);
+    public Config getConfig() {
+        return mConfig;
     }
 
-    public void setPhotoUri(Uri uri, @Nullable Context context) {
+    private void setDownLoadListener(DownLoadListener listener) {
+        mDownLoadListener = listener;
+    }
+    public void setPhotoUri(final Uri uri, final int failResourceId , final ScalingUtils.ScaleType failScaleType, int progressResourceId, boolean tapToRetryEnabled, final DownLoadListener listener) {
+        setDownLoadListener(listener);
         mEnableDraweeMatrix = false;
+        GenericDraweeHierarchy hierarchy=getHierarchy();
+        if (failResourceId >= 0) {
+            hierarchy.setFailureImage(failResourceId, failScaleType);
+            if (tapToRetryEnabled) {
+                hierarchy.setRetryImage(failResourceId,failScaleType);
+            }
+
+        }
+        if (progressResourceId >= 0) {
+            hierarchy.setProgressBarImage(progressResourceId,CENTER);
+        }
+
+        mConfig.setTapToRetryEnabled(tapToRetryEnabled);
+
         DraweeController controller = Fresco.newDraweeControllerBuilder()
-                .setCallerContext(context)
+                .setCallerContext(getContext())
+                .setTapToRetryEnabled(tapToRetryEnabled)
                 .setUri(uri)
                 .setOldController(getController())
                 .setControllerListener(new BaseControllerListener<ImageInfo>() {
+                    @Override
+                    public void onSubmit(String id, Object callerContext) {
+                        setOnTouchListener(null);
+                        super.onSubmit(id, callerContext);
+                        mConfig.setDowaloading();
+                    }
+
                     @Override public void onFailure(String id, Throwable throwable) {
                         super.onFailure(id, throwable);
+                        mConfig.setDowaloadFailure();
+//                        getHierarchy().setActualImageScaleType(failScaleType);
+//                        setImageURI(Uri.parse("res://sadf/"+failResourceId));
                         mEnableDraweeMatrix = false;
+                        if (mDownLoadListener != null) {
+                            mDownLoadListener.onFailure(PhotoDraweeView.this,id,throwable);
+                        }
                     }
 
                     @Override public void onFinalImageSet(String id, ImageInfo imageInfo,
-                            Animatable animatable) {
+                                                          Animatable animatable) {//图片加载成功
+                        setOnTouchListener(mAttacher);
                         super.onFinalImageSet(id, imageInfo, animatable);
+                        mConfig.setDowaloadSuccess();
                         mEnableDraweeMatrix = true;
                         if (imageInfo != null) {
                             update(imageInfo.getWidth(), imageInfo.getHeight());
+                        }
+                        if (mDownLoadListener != null) {
+                            mDownLoadListener.onFinalImageSet(PhotoDraweeView.this,uri,id,imageInfo,animatable);
                         }
                     }
 
@@ -199,18 +248,39 @@ public class PhotoDraweeView extends SimpleDraweeView implements IAttacher {
                     public void onIntermediateImageFailed(String id, Throwable throwable) {
                         super.onIntermediateImageFailed(id, throwable);
                         mEnableDraweeMatrix = false;
+                        if (mDownLoadListener != null) {
+                            mDownLoadListener.onIntermediateImageFailed(PhotoDraweeView.this,id,throwable);
+                        }
                     }
 
-                    @Override public void onIntermediateImageSet(String id, ImageInfo imageInfo) {
+                    @Override public void onIntermediateImageSet(String id, ImageInfo imageInfo) {//图片设置渐进式
+                        setOnTouchListener(mAttacher);
                         super.onIntermediateImageSet(id, imageInfo);
                         mEnableDraweeMatrix = true;
                         if (imageInfo != null) {
                             update(imageInfo.getWidth(), imageInfo.getHeight());
                         }
+                        if (mDownLoadListener != null) {
+                            mDownLoadListener.onIntermediateImageSet(PhotoDraweeView.this,uri,id,imageInfo);
+                        }
                     }
                 })
                 .build();
+
         setController(controller);
+    }
+    public void setPhotoUri(String url,int failResourceId ,int progressResourceId,boolean tapToRetryEnabled,final DownLoadListener listener) {
+        setPhotoUri(Uri.parse(url),failResourceId,null,progressResourceId,tapToRetryEnabled,listener);
+    }
+    public void setPhotoUri(String url,int failResourceId ,ScalingUtils.ScaleType scaleType,int progressResourceId,boolean tapToRetryEnabled,final DownLoadListener listener) {
+        setPhotoUri(Uri.parse(url),failResourceId,scaleType,progressResourceId,tapToRetryEnabled,listener);
+    }
+    public void setPhotoUri(Uri uri) {
+        setPhotoUri(uri, getContext());
+    }
+
+    public void setPhotoUri(Uri uri, @Nullable Context context) {
+        setPhotoUri(uri,-1,null,-1,false,null);
     }
 
     public boolean isNeedDrag(int dx , int dy) {
@@ -226,5 +296,14 @@ public class PhotoDraweeView extends SimpleDraweeView implements IAttacher {
     }
     public boolean isDragging() {
         return mAttacher.isDragging();
+    }
+
+    public interface  DownLoadListener{
+
+        void onFinalImageSet(PhotoDraweeView view, Uri uri, String id, ImageInfo imageInfo, Animatable animatable) ;
+        void onIntermediateImageSet(PhotoDraweeView view, Uri uri, String id, ImageInfo imageInfo) ;
+
+        void onFailure(PhotoDraweeView view, String id, Throwable throwable);
+        void onIntermediateImageFailed(PhotoDraweeView view, String id, Throwable throwable);
     }
 }

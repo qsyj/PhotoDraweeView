@@ -93,7 +93,8 @@ public class Attacher implements IAttacher, View.OnTouchListener, OnScaleDragGes
         }
     }
 
-    @Nullable public DraweeView<GenericDraweeHierarchy> getDraweeView() {
+    @Nullable
+    public DraweeView<GenericDraweeHierarchy> getDraweeView() {
         return mDraweeView.get();
     }
 
@@ -512,7 +513,7 @@ public class Attacher implements IAttacher, View.OnTouchListener, OnScaleDragGes
         private final float mZoomStart, mZoomEnd;
 
         public AnimatedZoomRunnable(final float currentZoom, final float targetZoom,
-                final float focalX, final float focalY) {
+                                    final float focalX, final float focalY) {
             mFocalX = focalX;
             mFocalY = focalY;
             mStartTime = System.currentTimeMillis();
@@ -665,5 +666,23 @@ public class Attacher implements IAttacher, View.OnTouchListener, OnScaleDragGes
             }
         }*/
         return isDraging;
+    }
+
+    public boolean isReloadImage() {
+        DraweeView<GenericDraweeHierarchy> dv = getDraweeView();
+        if (dv != null && dv instanceof PhotoDraweeView) {
+            PhotoDraweeView photoDraweeView= (PhotoDraweeView) dv;
+            Config config=photoDraweeView.getConfig();
+            if (config.isDownloadFailure()&&config.isTapToRetryEnabled()) {//加载失败别且允许重新加载
+                return true;
+            }
+        }
+        return false;
+    }
+    public void reloadImage() {
+        DraweeView<GenericDraweeHierarchy> dv = getDraweeView();
+        if (dv != null) {
+            dv.setController(dv.getController());
+        }
     }
 }
