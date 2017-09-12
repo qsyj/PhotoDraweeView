@@ -86,6 +86,11 @@ public class PhotoDraweeViewPager extends ViewGroup {
      */
     private int mExpectedAdapterCount;
 
+    /**
+     * 第一次选中的
+     */
+    private int mFirstSelectedItem = 0;
+
     static class ItemInfo {
         Object object;
         int position;
@@ -1392,7 +1397,7 @@ public class PhotoDraweeViewPager extends ViewGroup {
                     + " position=" + position + "}";
         }
 
-        public static final Parcelable.Creator<SavedState> CREATOR = ParcelableCompat.newCreator(
+        public static final Creator<SavedState> CREATOR = ParcelableCompat.newCreator(
                 new ParcelableCompatCreatorCallbacks<SavedState>() {
                     @Override
                     public SavedState createFromParcel(Parcel in, ClassLoader loader) {
@@ -1762,6 +1767,7 @@ public class PhotoDraweeViewPager extends ViewGroup {
         mDecorChildCount = decorCount;
 
         if (mFirstLayout) {
+            mFirstSelectedItem =mCurItem;
             scrollToItem(mCurItem, false, 0, false);
         }
         mFirstLayout = false;
@@ -2472,20 +2478,20 @@ public class PhotoDraweeViewPager extends ViewGroup {
                         pageOffset = pageOffset > 1 ? pageOffset-1 : pageOffset;
 
 /*===================================前两个条件是因为第一页和最后一页在边缘滑动时pageOffset始终为0=======================================================*/
-                        int edgeType = checkPageEdage(scrollx);
-                        Log.e("checkChildDrag()","edgeType:"+edgeType+",mOldscrollx:" + mOldscrollx +",mCurItem" + mCurItem + ",scrollx:" + scrollx + ",width:" + width);
-                            if (/*(currentPage==0&&pageOffset==0f)||
+                        int edgeType = checkPageEdage(scrollx,mOldscrollx);
+                        Log.e("checkChildDrag()","edgeType:"+edgeType+",mOldscrollx:" + mOldscrollx +",mFirstSelectedItem:"+mFirstSelectedItem+",mCurItem" + mCurItem + ",scrollx:" + scrollx + ",width:" + width);
+                        if (/*(currentPage==0&&pageOffset==0f)||
                                 ((currentPage==adapter.getCount()-1)&&pageOffset==0)||
                                 (mOldPageOffset > 0.95f && pageOffset < 0.05f) ||
                                 (mOldPageOffset < 0.05f && pageOffset > 0.095f)*/
-                                    edgeType>0) {
+                                edgeType>0) {
 //                             Log.e("checkChildDrag()", "scrollx:" + scrollx );
 
-                                int childDx ;
-                                int oldScrollx = scrollx;
-                                int newScrollx = mCurItem * width;
-                                childDx = newScrollx - oldScrollx;
-                                Log.e("checkChildDrag()", "childDx:" + childDx );
+                            int childDx ;
+                            int oldScrollx = scrollx;
+                            int newScrollx = (mCurItem-mFirstSelectedItem) * width;
+                            childDx = newScrollx - oldScrollx;
+                            Log.e("checkChildDrag()", "childDx:" + childDx );
 
 /*============第一个条件是第一页边缘向右滑动或者最后一页在边缘滑动向左滑动不成立(不加这个条件 当第一页边缘向右滑动时 随手势向右的波浪效果会出问题,因为事件不分发给ViewPager了)=======================================================*/
 //                            if (!(childDx==0&&(currentPage==0||(currentPage==adapter.getCount()-1)))&&
@@ -2518,9 +2524,11 @@ public class PhotoDraweeViewPager extends ViewGroup {
      * TYPE_DRAG_EDAGE3-->第1页时右边缘向右滑动经历;  TYPE_DRAG_EDAGE4-->第1页时左边缘向右滑动经历;
      * TYPE_DRAG_EDAGE5-->最后一页时左边缘向左滑动经历;  TYPE_DRAG_EDAGE6-->最后一页时右边缘向左滑动经历;
      */
-    private int checkPageEdage(int scrollx) {
+    private int checkPageEdage(int scrollx,int mOldscrollx) {
 //        Log.e("checkChildDrag()", "scrollx:" + scrollx+",mOldscrollx:"+mOldscrollx+",mCurItem:"+mCurItem);
         final int width = getClientWidth();
+        scrollx = mFirstSelectedItem * width + scrollx;
+        mOldscrollx= mFirstSelectedItem * width + mOldscrollx;
         int oldscrollx = 0;
         if (mCurItem==0) {
             if (mOldscrollx > 0) {
@@ -3318,7 +3326,7 @@ public class PhotoDraweeViewPager extends ViewGroup {
         /**
          * Gravity setting for use on decor views only:
          * Where to position the view page within the overall ViewPager
-         * container; constants are defined in {@link android.view.Gravity}.
+         * container; constants are defined in {@link Gravity}.
          */
         public int gravity;
 

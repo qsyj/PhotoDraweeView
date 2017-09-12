@@ -17,6 +17,8 @@ import com.facebook.drawee.generic.GenericDraweeHierarchy;
 import com.facebook.drawee.interfaces.DraweeController;
 import com.facebook.drawee.view.SimpleDraweeView;
 import com.facebook.imagepipeline.image.ImageInfo;
+import com.facebook.imagepipeline.request.ImageRequest;
+import com.facebook.imagepipeline.request.ImageRequestBuilder;
 
 import static com.facebook.drawee.drawable.ScalingUtils.ScaleType.CENTER;
 
@@ -189,7 +191,9 @@ public class PhotoDraweeView extends SimpleDraweeView implements IAttacher {
     private void setDownLoadListener(DownLoadListener listener) {
         mDownLoadListener = listener;
     }
-    public void setPhotoUri(final Uri uri, final int failResourceId , final ScalingUtils.ScaleType failScaleType, int progressResourceId, boolean tapToRetryEnabled, final DownLoadListener listener) {
+
+    public void setPhotoImageRequest(final ImageRequest imageRequest, final int failResourceId, final ScalingUtils.ScaleType failScaleType, int progressResourceId, ScalingUtils.ScaleType loadingScaleType, boolean tapToRetryEnabled, final DownLoadListener listener) {
+        final Uri uri = imageRequest.getSourceUri();
         setDownLoadListener(listener);
         mEnableDraweeMatrix = false;
         GenericDraweeHierarchy hierarchy=getHierarchy();
@@ -201,7 +205,10 @@ public class PhotoDraweeView extends SimpleDraweeView implements IAttacher {
 
         }
         if (progressResourceId >= 0) {
-            hierarchy.setProgressBarImage(progressResourceId,CENTER);
+            if (loadingScaleType == null) {
+                loadingScaleType = CENTER;
+            }
+            hierarchy.setProgressBarImage(progressResourceId,loadingScaleType);
         }
 
         mConfig.setTapToRetryEnabled(tapToRetryEnabled);
@@ -209,7 +216,7 @@ public class PhotoDraweeView extends SimpleDraweeView implements IAttacher {
         DraweeController controller = Fresco.newDraweeControllerBuilder()
                 .setCallerContext(getContext())
                 .setTapToRetryEnabled(tapToRetryEnabled)
-                .setUri(uri)
+                .setImageRequest(imageRequest)
                 .setOldController(getController())
                 .setControllerListener(new BaseControllerListener<ImageInfo>() {
                     @Override
@@ -269,18 +276,23 @@ public class PhotoDraweeView extends SimpleDraweeView implements IAttacher {
 
         setController(controller);
     }
-    public void setPhotoUri(String url,int failResourceId ,int progressResourceId,boolean tapToRetryEnabled,final DownLoadListener listener) {
-        setPhotoUri(Uri.parse(url),failResourceId,null,progressResourceId,tapToRetryEnabled,listener);
+    public void setPhotoUri(final Uri uri, final int failResourceId , final ScalingUtils.ScaleType failScaleType, int progressResourceId,
+                            ScalingUtils.ScaleType loadingScaleType, boolean tapToRetryEnabled, final DownLoadListener listener) {
+        ImageRequest imageRequest= ImageRequestBuilder.newBuilderWithSource(uri).build();
+        setPhotoImageRequest(imageRequest,failResourceId,failScaleType,progressResourceId,loadingScaleType,tapToRetryEnabled,listener);
     }
-    public void setPhotoUri(String url,int failResourceId ,ScalingUtils.ScaleType scaleType,int progressResourceId,boolean tapToRetryEnabled,final DownLoadListener listener) {
-        setPhotoUri(Uri.parse(url),failResourceId,scaleType,progressResourceId,tapToRetryEnabled,listener);
+    public void setPhotoUri(String url,int failResourceId ,int progressResourceId,boolean tapToRetryEnabled,final DownLoadListener listener) {
+        setPhotoUri(Uri.parse(url),failResourceId,null,progressResourceId,null,tapToRetryEnabled,listener);
+    }
+    public void setPhotoUri(String url,int failResourceId ,ScalingUtils.ScaleType failScaleType,int progressResourceId,ScalingUtils.ScaleType loadingScaleType,boolean tapToRetryEnabled,final DownLoadListener listener) {
+        setPhotoUri(Uri.parse(url),failResourceId,failScaleType,progressResourceId,loadingScaleType,tapToRetryEnabled,listener);
     }
     public void setPhotoUri(Uri uri) {
         setPhotoUri(uri, getContext());
     }
 
     public void setPhotoUri(Uri uri, @Nullable Context context) {
-        setPhotoUri(uri,-1,null,-1,false,null);
+        setPhotoUri(uri,-1,null,-1,null,false,null);
     }
 
     public boolean isNeedDrag(int dx , int dy) {
