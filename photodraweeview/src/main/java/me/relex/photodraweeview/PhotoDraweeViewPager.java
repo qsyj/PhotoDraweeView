@@ -992,11 +992,6 @@ public class PhotoDraweeViewPager extends ViewGroup {
         ViewCompat.postInvalidateOnAnimation(this);
     }
 
-    /**
-     * 通过position(Adapter中的下标,不是ViewGroup child index)获取ItemInfo
-     * @param position
-     * @return
-     */
     private ItemInfo getItemInfo(int position) {
         for (ItemInfo itemInfo: mItems) {
             if (itemInfo.position == position) {
@@ -2201,7 +2196,7 @@ public class PhotoDraweeViewPager extends ViewGroup {
                 }
                 if (mIsBeingDragged) {
                     // Scroll to follow the motion event
-                    if (performDrag(x)) {
+                    if (performDrag(x,dx)) {
                         ViewCompat.postInvalidateOnAnimation(this);
                     }
                 }
@@ -2337,7 +2332,8 @@ public class PhotoDraweeViewPager extends ViewGroup {
                     // Scroll to follow the motion event
                     final int activePointerIndex = ev.findPointerIndex(mActivePointerId);
                     final float x = ev.getX(activePointerIndex);
-                    needsInvalidate |= performDrag(x);
+                    final float dx = x - mLastMotionX;
+                    needsInvalidate |= performDrag(x,dx);
                 }
                 break;
             case MotionEvent.ACTION_UP:
@@ -2403,7 +2399,7 @@ public class PhotoDraweeViewPager extends ViewGroup {
         }
     }
 
-    private boolean performDrag(float x) {
+    private boolean performDrag(float x,float dx) {
         boolean needsInvalidate = false;
 
         final float deltaX = mLastMotionX - x;
@@ -2446,7 +2442,7 @@ public class PhotoDraweeViewPager extends ViewGroup {
         mLastMotionX += scrollX - (int) scrollX;
         /*scrollTo((int) scrollX, getScrollY());
         pageScrolled((int) scrollX);*/
-        checkChildDrag((int) scrollX, (int) scrollX, getScrollY());
+        checkChildDrag(dx, (int) scrollX, getScrollY());
 
         return needsInvalidate;
     }
@@ -2463,12 +2459,12 @@ public class PhotoDraweeViewPager extends ViewGroup {
      * 在页面边缘切换时,需要判断子View是否缩放,是否需要拖动处理,如果需要则要使mIsChildViewMoved为true,PhotoDraweeViewPager暂时不需要事件处理
      * 比如第二页面向右滑动时pageOffset从1-->0变化,scrollx(屏幕1080*1920)从1080-->0变化  向左滑动pageOffset从0-->1变化,scrollx(屏幕1080*1920)从1080-->2160变化
      * 当边缘滑动时 可能不会刚好对准边缘时 就执行onTouchEvent()-->performDrag()-->checkChildDrag()了  所以刚好过边缘时 如果子View需要滑动修正scrollx值
-     * @param xpos
+     * @param dx
      * @param scrollx
      * @param scrolly
      * @return
      */
-    private boolean checkChildDrag(int xpos,int scrollx,int scrolly) {
+    private boolean checkChildDrag(float dx,int scrollx,int scrolly) {
 
 
         final ItemInfo ii = infoForCurrentScrollPosition();
@@ -2476,7 +2472,7 @@ public class PhotoDraweeViewPager extends ViewGroup {
         float pageOffset = 0f;
         int offsetPixels = 0;
         boolean isNeed = false;
-        Log.e("checkChildDrag()", "scrollx:" +scrollx);
+//        Log.e("checkChildDrag()", "scrollx:" +scrollx);
         if (mIsBeingDragged) {
             PhotoDraweePagerAdapter adapter = getAdapter();
             if (adapter != null) {
@@ -2488,15 +2484,10 @@ public class PhotoDraweeViewPager extends ViewGroup {
 
 
                         final int width = getClientWidth();
-                        final float marginOffset = (float) mPageMargin / width;
-                        pageOffset = (((float) xpos / width) - ii.offset)
-                                / (ii.widthFactor + marginOffset);
-                        pageOffset = pageOffset >= 0 ? pageOffset : 1 + pageOffset;
-                        pageOffset = pageOffset > 1 ? pageOffset-1 : pageOffset;
 
 /*===================================前两个条件是因为第一页和最后一页在边缘滑动时pageOffset始终为0=======================================================*/
                         int edgeType = checkPageEdage(scrollx,mOldscrollx);
-//                        Log.e("checkChildDrag()","edgeType:"+edgeType+",mOldscrollx:" + mOldscrollx +",marginOffset:"+marginOffset+",mCurItem" + mCurItem + ",scrollx:" + scrollx + ",width:" + width);
+//                        Log.e("checkChildDrag()","edgeType:"+edgeType+",mOldscrollx:" + mOldscrollx +",dx:"+dx+",mCurItem:" + mCurItem + ",scrollx:" + scrollx + ",width:" + width);
                         if (/*(currentPage==0&&pageOffset==0f)||
                                 ((currentPage==adapter.getCount()-1)&&pageOffset==0)||
                                 (mOldPageOffset > 0.95f && pageOffset < 0.05f) ||
@@ -2508,14 +2499,27 @@ public class PhotoDraweeViewPager extends ViewGroup {
                             int oldScrollx = scrollx;
                             int newScrollx = (int) (currentItem.offset * width);
                             childDx = newScrollx - oldScrollx;
-
+                            if (edgeType == TYPE_DRAG_EDAGE3 || edgeType == TYPE_DRAG_EDAGE5) {
+                                childDx = (int) dx;
+                            }
 /*============第一个条件是第一页边缘向右滑动或者最后一页在边缘滑动向左滑动不成立(不加这个条件 当第一页边缘向右滑动时 随手势向右的波浪效果会出问题,因为事件不分发给ViewPager了)=======================================================*/
 //                            if (!(childDx==0&&(currentPage==0||(currentPage==adapter.getCount()-1)))&&
-                            if (!(childDx==0&&(edgeType==TYPE_DRAG_EDAGE4||edgeType==TYPE_DRAG_EDAGE6))&&
+                            if (!(childDx == 0) &&
                                     photoDraweeView.isNeedDrag(childDx, 0)) {
                                 isNeed = true;
                                 scrollx = newScrollx;
-//                                Log.e("checkChildDrag()", "childDx:" + childDx +",newScrollx:"+newScrollx);
+//                                    Log.e("checkChildDrag()", "childDx:" + childDx + ",newScrollx:" + newScrollx);
+                            } else {
+                                if (edgeType == TYPE_DRAG_EDAGE3 ) {
+                                    if (dx >= 0) {
+                                        mIsBeingDragged = false;
+                                    }
+                                }
+                                if (edgeType == TYPE_DRAG_EDAGE5 ) {
+                                    if (dx <= 0) {
+                                        mIsBeingDragged = false;
+                                    }
+                                }
                             }
                         }
                     }
@@ -2538,27 +2542,24 @@ public class PhotoDraweeViewPager extends ViewGroup {
      * 判断滑动时是否经历了一次边缘滑动
      * @param scrollx
      * @return TYPE_DRAG_EDAGE_NONE-->没有;  TYPE_DRAG_EDAGE1-->向左滑动经历; TYPE_DRAG_EDAGE2-->向右滑动经历;
-     * TYPE_DRAG_EDAGE3-->第1页时右边缘向右滑动经历;  TYPE_DRAG_EDAGE4-->第1页时左边缘向右滑动经历;
-     * TYPE_DRAG_EDAGE5-->最后一页时左边缘向左滑动经历;  TYPE_DRAG_EDAGE6-->最后一页时右边缘向左滑动经历;
+     * TYPE_DRAG_EDAGE3-->第1页时右边缘向右滑动经历;  TYPE_DRAG_EDAGE4-->第1页时左边缘向右滑动经历;(其实TYPE_DRAG_EDAGE3与TYPE_DRAG_EDAGE4一种情况)
+     * TYPE_DRAG_EDAGE5-->最后一页时左边缘向左滑动经历;  TYPE_DRAG_EDAGE6-->最后一页时右边缘向左滑动经历;(其实TYPE_DRAG_EDAGE5与TYPE_DRAG_EDAGE6一种情况)
      */
     private int checkPageEdage(int scrollx,int mOldscrollx) {
 //        Log.e("checkChildDrag()", "scrollx:" + scrollx+",mOldscrollx:"+mOldscrollx+",mCurItem:"+mCurItem);
         final int width = getClientWidth();
         if (mCurItem==0) {
-            if (scrollx > (int)(mItems.get(0).offset*width)) {
+            int  itemScrollX= (int) (getItemInfo(0).offset*width);
+            if (scrollx == itemScrollX)
                 return TYPE_DRAG_EDAGE3;
-            } else {
-                return TYPE_DRAG_EDAGE4;
-            }
 
         }
         PhotoDraweePagerAdapter adapter = getAdapter();
         int count = adapter.getCount()-1;
         if (mCurItem == count) {
-            if (scrollx <  (int)(mItems.get(mItems.size()-1).offset*width)) {
+            int  itemScrollX= (int)(mItems.get(mItems.size()-1).offset*width);
+            if (scrollx == itemScrollX) {
                 return TYPE_DRAG_EDAGE5;
-            } else {
-                return TYPE_DRAG_EDAGE6;
             }
         }
 
