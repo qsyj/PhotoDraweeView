@@ -41,6 +41,7 @@ public class ViewPagerActivity extends AppCompatActivity {
         CircleIndicator indicator = (CircleIndicator) findViewById(R.id.indicator);
         MultiTouchViewPager viewPager = (MultiTouchViewPager) findViewById(R.id.view_pager);
         viewPager.setOffscreenPageLimit(3);
+        viewPager.setPageMargin(30);
         viewPager.setAdapter(new DraweePagerAdapter());
         viewPager.setOnPageChangeListener(new PhotoDraweeViewPager.OnPageChangeListener() {
             @Override
@@ -83,8 +84,8 @@ public class ViewPagerActivity extends AppCompatActivity {
         @Override public Object instantiateItem(ViewGroup viewGroup, int position) {
             String res = "res:///" + mDrawables[position];
             final PhotoDraweeView photoDraweeView = new PhotoDraweeView(viewGroup.getContext());
-            photoDraweeView.setPhotoUri("http://ll.ll.vom/dkk.jpg", R.drawable.ic_error,
-                    ScalingUtils.ScaleType.CENTER, -1, true, new PhotoDraweeView.DownLoadListener() {
+            photoDraweeView.setPhotoUri(res, R.drawable.ic_error,
+                    ScalingUtils.ScaleType.CENTER, -1,ScalingUtils.ScaleType.CENTER, true,new PhotoDraweeView.DownLoadListener() {
                         @Override
                         public void onFinalImageSet(PhotoDraweeView view, Uri uri, String id, ImageInfo imageInfo, Animatable animatable) {
 
